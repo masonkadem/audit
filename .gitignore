@@ -1,0 +1,14 @@
+# Per-participant MESA data and outputs never leave this machine (NSRR data-use agreement).
+results/
+data/
+*.npz
+*.parquet
+*.edf
+*.xml
+*.csv
+!figures/*.csv
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/

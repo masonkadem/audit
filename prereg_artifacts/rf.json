@@ -1,0 +1,40 @@
+{
+  "model": "hf://joncarter/wav2sleep",
+  "mixer_theoretical_one_sided_epochs": 124,
+  "mixer_theoretical_total_epochs": 249,
+  "mixer_theoretical_one_sided_minutes": 62.0,
+  "mixer_measured_nonzero_one_sided_epochs": 124,
+  "mixer_random_input_95pct_mass_radius_epochs": 100,
+  "encoder_rf": {
+    "ABD": {
+      "samples": 379,
+      "epochs": 1.48046875
+    },
+    "ECG": {
+      "samples": 1531,
+      "epochs": 1.4951171875
+    },
+    "PPG": {
+      "samples": 1531,
+      "epochs": 1.4951171875
+    },
+    "THX": {
+      "samples": 379,
+      "epochs": 1.48046875
+    }
+  },
+  "full_model_max_dprob_at_lag": {
+    "0": 0.05279273470314216,
+    "1": 0.0444810393981826,
+    "5": 0.033164863483738816,
+    "30": 0.07827245402722782,
+    "100": 0.005147188471966491,
+    "124": 0.04702950777692405,
+    "125": 0.03383269864532701,
+    "200": 0.027403972908499385,
+    "300": 0.0648210239184609,
+    "590": 0.03025934321306656
+  },
+  "causal": false,
+  "feature_dim": 128
+}
