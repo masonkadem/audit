@@ -39,6 +39,12 @@ def load_night(fp: str) -> tuple[dict[str, np.ndarray], np.ndarray, int]:
             spe = COLS_TO_SAMPLES_PER_EPOCH[col]
             x = df[col].dropna().to_numpy().astype(np.float32)[: T * spe]
             sig[col] = x.reshape(-1, spe)
+            # Night ends where the ingest's zero fill begins, not at the last scored epoch:
+            # unscored epochs with real signal move with content like any other epoch.
+            live = np.flatnonzero(np.abs(sig[col]).max(1) > 0)
+            if len(live):
+                n = max(n, int(live[-1]) + 1)
+    labels = np.r_[labels, np.full(max(0, n - len(labels)), -1)]
     return sig, labels, n
 
 

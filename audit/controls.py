@@ -42,12 +42,18 @@ def load(features_fp: str, labels_fp: str):
     feat = pd.read_parquet(features_fp, columns=cols)
     if not (feat['subject_id'].to_numpy() == lab['subject_id'].to_numpy()).all():
         raise ValueError('features and labels are not row-aligned')
+    feat = feat.drop(columns='subject_id')
+    for c in feat.columns:
+        if not pd.api.types.is_numeric_dtype(feat[c]):
+            # e.g. _hrv_higuchi_fd was saved as the repr of neurokit's (value, info) tuple
+            feat[c] = pd.to_numeric(feat[c].astype(str).str.extract(r'^\(?\s*([-+0-9.eE]+|nan)', expand=False),
+                                    errors='coerce')
+    Xall = feat.to_numpy(np.float32)
+    yall = lab['4stage'].to_numpy()
+    yall = np.where(np.isnan(yall), -1, yall).astype(int)
     nights = {}
     for sid, idx in lab.groupby('subject_id', sort=False).indices.items():
-        y = lab['4stage'].to_numpy()[idx]
-        y = np.where(np.isnan(y), -1, y).astype(int)
-        X = feat.iloc[idx].drop(columns='subject_id').to_numpy(np.float32)
-        nights[f'mesa-sleep-{sid}'] = (X, y)
+        nights[f'mesa-sleep-{sid}'] = (Xall[idx], yall[idx])
     return nights, [c for c in cols if c != 'subject_id']
 
 
