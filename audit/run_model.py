@@ -67,7 +67,11 @@ def altered_input(sig: dict[str, np.ndarray], src: np.ndarray, cols: list[str], 
 
 @torch.inference_mode()
 def run_night(model, fp: str, device: str) -> dict[str, np.ndarray]:
-    sig, labels, n = load_night(fp)
+    return run_arrays(model, *load_night(fp), device)
+
+
+@torch.inference_mode()
+def run_arrays(model, sig: dict[str, np.ndarray], labels: np.ndarray, n: int, device: str) -> dict[str, np.ndarray]:
     lab = labels[:n]
     plans = iv.build(lab)
     out: dict[str, np.ndarray] = {'labels': lab, 'n': np.array(n)}

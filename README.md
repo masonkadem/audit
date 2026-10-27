@@ -28,10 +28,12 @@ python -m audit.rf --data $WAV2SLEEP_DATA/mesa/test            # R, on unaltered
 python -m audit.analysis fit-prior --source ingest --data $WAV2SLEEP_DATA/mesa/train
 python -m audit.run_model --data $WAV2SLEEP_DATA/mesa/test     # steps 3 and 5
 python -m audit.controls --features F.parquet --labels L.parquet   # step 6
-python -m audit.analysis slopes --runs results/w2s --models ppg ecg all --primary-dist <R> --out results/w2s_slopes
-python -m audit.analysis slopes --runs results/controls --models lgbm_notime lgbm_time \
+python -m audit.run_h5 --ppg mesa_ppg_with_labels.h5 --ecg mesa_real_ecg.h5 --index mesa_subject_index.h5
+python -m audit.analysis slopes --runs results/w2s --models ppg ecg all --primary-dist 72 --out results/w2s_slopes
+python -m audit.analysis slopes --runs results/h5 --models ppg ecg --primary-dist 72 --out results/h5_slopes
+python -m audit.analysis slopes --runs results/controls --models lgbm_notime lgbm_time lgbm_start \
     --min-dist 5 --primary-dist 5 --out results/controls_slopes
-python -m audit.report
+python -m audit.report --runs results/w2s:all results/w2s:ppg --slopes results/w2s_slopes
 pytest -q
 ```
 

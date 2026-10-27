@@ -94,10 +94,14 @@ def fig_stage_by_position(prior_dir: str, runs: list[tuple[str, str]], out: str,
 
 def fig_slope_by_distance(slope_dirs: list[str], out: str):
     sl = pd.concat([pd.read_csv(os.path.join(d, 'slopes.csv')) for d in slope_dirs if os.path.exists(os.path.join(d, 'slopes.csv'))])
-    sl = sl[(sl.family == 'by_distance') & (((sl.cond.str.startswith('offset')) & (sl.anchor == 'start'))
-                                           | ((~sl.cond.str.startswith('offset')) & (sl.anchor == 'onset')))]
-    models, conds = sorted(sl.model.unique()), sorted(sl.cond.unique())
-    fig, axes = plt.subplots(len(models), len(conds), figsize=(2.6 * len(conds), 2.2 * len(models)),
+    # Relocations only, onset prior. Offset curves are mostly unidentified (Δprior rarely varies near
+    # an offset seam) and are tabulated in report.md instead.
+    edge = sl[(sl.family == 'by_edge') & (sl.cond == 'swap_thirds') & (sl.anchor == 'onset')]
+    sl = sl[(sl.family == 'by_distance') & sl.cond.isin(['swap_thirds', 'reverse_60', 'reverse_30'])
+            & (sl.anchor == 'onset')]
+    models = [m for m in ('all', 'ecg', 'ppg') if m in set(sl.model)] or sorted(sl.model.unique())
+    conds = ['swap_thirds', 'reverse_60', 'reverse_30']
+    fig, axes = plt.subplots(len(models), len(conds) + 1, figsize=(3.0 * (len(conds) + 1), 2.4 * len(models)),
                              sharey=True, squeeze=False, facecolor=SURFACE)
     order = ['0-5', '5-15', '15-30', '30-62', '62-120', '120-inf']
     for r, m in enumerate(models):
@@ -109,14 +113,29 @@ def fig_slope_by_distance(slope_dirs: list[str], out: str):
             for k, s in enumerate(STAGES):
                 h = g[g.stage == s].set_index('dist_bin').reindex(order)
                 xs = np.arange(len(order)) + (k - 1.5) * 0.15
-                ax.errorbar(xs, h.slope, yerr=[h.slope - h.lo, h.hi - h.slope], fmt='o', ms=4, lw=1,
+                # Percentile CIs can exclude the point estimate; clip bar lengths at 0.
+                yerr = np.clip(np.vstack([h.slope - h.lo, h.hi - h.slope]), 0, None)
+                ax.errorbar(xs, h.slope, yerr=yerr, fmt='o', ms=4, lw=1,
                             color=COLORS[s], label=s if (r == 0 and c == 0) else None)
             ax.set_xticks(range(len(order)), order, rotation=60, fontsize=7)
             if r == 0:
                 ax.set_title(cond, fontsize=8, color=INK)
             if c == 0:
                 ax.set_ylabel(f'{m}\nslope', fontsize=8, color=INK2)
-    axes[-1, len(conds) // 2].set_xlabel('Seam distance (min)', fontsize=8, color=INK2)
+        ax = axes[r, -1]
+        _style(ax)
+        ax.axhline(0, color=INK2, lw=0.8)
+        ge = edge[edge.model == m]
+        for k, s in enumerate(STAGES):
+            h = ge[ge.stage == s].set_index('dist_bin').reindex(['edge_exposed', 'interior'])
+            xs = np.arange(2) + (k - 1.5) * 0.15
+            yerr = np.clip(np.vstack([h.slope - h.lo, h.hi - h.slope]), 0, None)
+            ax.errorbar(xs, h.slope, yerr=yerr, fmt='o', ms=4, lw=1, color=COLORS[s])
+        ax.set_xticks([0, 1], ['edge-exposed', 'interior'], fontsize=7)
+        ax.set_xlim(-0.5, 1.5)
+        if r == 0:
+            ax.set_title('swap_thirds, >=124 ep from seam', fontsize=8, color=INK)
+    axes[-1, 1].set_xlabel('Seam distance (min)', fontsize=8, color=INK2)
     fig.legend(loc='upper center', ncol=4, frameon=False, fontsize=8)
     fig.tight_layout(rect=(0, 0, 1, 0.95))
     fig.savefig(out, dpi=160, facecolor=SURFACE)

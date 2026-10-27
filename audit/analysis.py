@@ -25,6 +25,7 @@ RELOCATIONS = ['swap_thirds', 'reverse_30', 'reverse_60']
 OFFSETS = ['offset_15', 'offset_30', 'offset_60']
 N_BOOT = 2000
 EQUIV_MARGIN = 0.10
+MIN_SD_X = 0.005  # below this SD of Δprior a slope is reported as not identified (figure/table only)
 
 
 # ---------------------------------------------------------------- priors
@@ -154,10 +155,15 @@ def slope_ci(df: pd.DataFrame, x: str, y: str, rng: np.random.Generator) -> dict
     if len(s) < 2:
         return {'slope': np.nan, 'lo': np.nan, 'hi': np.nan, 'n_epochs': int(s['n'].sum()), 'n_participants': len(s)}
     a = s.to_numpy()
+    n, sx, _, sxx, _ = a.sum(0)
+    sd_x = float(np.sqrt(max(sxx / n - (sx / n) ** 2, 0)))
+    if sd_x < MIN_SD_X:  # Δprior barely varies: slope is not identified
+        return {'slope': np.nan, 'lo': np.nan, 'hi': np.nan, 'sd_x': sd_x,
+                'n_epochs': int(n), 'n_participants': len(a)}
     idx = rng.integers(0, len(a), size=(N_BOOT, len(a)))
     boots = np.array([_slope(a[b].sum(0)) for b in idx])
     lo, hi = np.nanpercentile(boots, [2.5, 97.5])
-    return {'slope': _slope(a.sum(0)), 'lo': lo, 'hi': hi, 'n_epochs': int(a[:, 0].sum()), 'n_participants': len(a)}
+    return {'slope': _slope(a.sum(0)), 'lo': lo, 'hi': hi, 'sd_x': sd_x, 'n_epochs': int(n), 'n_participants': len(a)}
 
 
 def dist_bin(d_epochs: pd.Series) -> pd.Series:
