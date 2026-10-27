@@ -29,7 +29,7 @@ from .prior import sleep_onset
 
 SEAM_RADIUS = 5  # epochs; longest feature window is 270 s = +/-4.5 epochs
 FEATURE_RE = re.compile(r'^(_hrv_|\d+_(RRV|EDR)_)')  # cardio-respiratory only, no actigraphy
-MODELS = ('lgbm_notime', 'lgbm_time')
+MODELS = ('lgbm_notime', 'lgbm_time', 'lgbm_start')  # lgbm_start: amendment 1 (prereg.md)
 
 
 def onset_minutes(labels: np.ndarray) -> np.ndarray:
@@ -57,11 +57,19 @@ def load(features_fp: str, labels_fp: str):
     return nights, [c for c in cols if c != 'subject_id']
 
 
-def design(X: np.ndarray, y: np.ndarray, time: bool) -> np.ndarray:
-    return np.column_stack([X, onset_minutes(y)]) if time else X
+def design(X: np.ndarray, y: np.ndarray, time: str | None) -> np.ndarray:
+    """time: None, 'onset' (minutes since sleep onset) or 'start' (minutes since recording start)."""
+    if time == 'onset':
+        return np.column_stack([X, onset_minutes(y)])
+    if time == 'start':
+        return np.column_stack([X, np.arange(len(y)) / iv.EPOCHS_PER_MIN])
+    return X
 
 
-def fit(nights, ids, val_ids, time: bool, seed: int = 0) -> lgb.LGBMClassifier:
+TIME_FEATURE = {'lgbm_notime': None, 'lgbm_time': 'onset', 'lgbm_start': 'start'}
+
+
+def fit(nights, ids, val_ids, time: str | None, seed: int = 0) -> lgb.LGBMClassifier:
     def stack(keys):
         Xs, ys = zip(*[(design(*nights[k], time), nights[k][1]) for k in keys])
         X, y = np.vstack(Xs), np.concatenate(ys)
@@ -84,9 +92,9 @@ def run_night(models: dict, X: np.ndarray, y: np.ndarray) -> dict[str, np.ndarra
         out[f'{name}/pos'] = iv.content_position(src, n)
         out[f'{name}/dist'] = iv.seam_distance(src)
         out[f'{name}/src'] = src
-        Xa, ya = X[src], y[src]  # time feature recomputed from the altered night's own onset
+        Xa, ya = X[src], y[src]  # time features recomputed from the altered night's own positions
         for m, clf in models.items():
-            out[f'{name}/{m}/prob'] = clf.predict_proba(design(Xa, ya, m == 'lgbm_time')).astype(np.float32)
+            out[f'{name}/{m}/prob'] = clf.predict_proba(design(Xa, ya, TIME_FEATURE[m])).astype(np.float32)
     return out
 
 
@@ -99,7 +107,7 @@ def main():
     nights, cols = load(args.features, args.labels)
     split = {s: [k for k in get_split('mesa', s) if k in nights] for s in ('train', 'val', 'test')}
     print({s: len(v) for s, v in split.items()}, f'{len(cols)} features')
-    models = {m: fit(nights, split['train'], split['val'], time=(m == 'lgbm_time')) for m in MODELS}
+    models = {m: fit(nights, split['train'], split['val'], time=TIME_FEATURE[m]) for m in MODELS}
     os.makedirs(args.out, exist_ok=True)
     for sid in tqdm(split['test']):
         np.savez_compressed(os.path.join(args.out, f'{sid}.npz'), **run_night(models, *nights[sid]))

@@ -171,6 +171,24 @@ positive control's primary 95% CI lower bound exceeds +0.10 for at least one sta
 negative control satisfies the equivalence criterion below. If the assay is invalid, wav2sleep's
 results are reported but neither prediction is marked confirmed.
 
+### Amendment 1 (2026-10-27), committed before any wav2sleep intervention was run
+
+At this point the negative and onset-time positive controls had been run, and R had been
+computed on unaltered nights. No wav2sleep intervention had been run.
+
+The onset-time positive control cannot validate the offset test: an offset leaves time since
+sleep onset unchanged, so that control's offset slope is ≈0 by construction (as observed). A
+third control is added:
+
+- **Positive control (offset)**: the same windowed features plus an explicit
+  time-since-recording-start feature (minutes since the first epoch of the feature record),
+  recomputed from each epoch's position in the altered night.
+
+**Offset assay validity**: the offset test (start-anchored prior) is valid only if this
+control's `primary_offset` 95% CI lower bound exceeds +0.10 for at least one stage. If it
+does not, wav2sleep's offset results are reported but cannot be read as evidence of
+faithfulness. The relocation verdict and its validity rule are unchanged.
+
 ## Predictions and decision rules
 
 Evaluated on the **primary** relocation slopes, all signals; repeated per input subset.
